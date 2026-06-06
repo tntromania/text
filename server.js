@@ -53,6 +53,7 @@ const ALLOWED_ORIGINS = new Set([
     'https://voice.viralio.ro',
     'https://pipeline.viralio.ro',
     'https://video.viralio.ro',
+	'https://text.viralio.ro',
 ]);
 app.use(cors({
     origin(origin, cb) {
