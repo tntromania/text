@@ -1,0 +1,7 @@
+runpod
+simple-lama-inpainting
+requests
+opencv-python-headless
+numpy
+Pillow
+easyocr

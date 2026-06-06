@@ -1,0 +1,33 @@
+# Dockerfile.runpod — Caption Eraser AI Tier
+# Deploy pe RunPod Serverless cu GPU CUDA
+#
+# Build & push:
+#   docker build -f Dockerfile.runpod -t <dockerhub_user>/caption-eraser-ai:latest .
+#   docker push <dockerhub_user>/caption-eraser-ai:latest
+#
+# Apoi pe RunPod: New Endpoint → Container Image → <dockerhub_user>/caption-eraser-ai:latest
+
+FROM runpod/pytorch:2.2.0-py3.10-cuda12.1.1-devel-ubuntu22.04
+
+WORKDIR /app
+
+# Dependințe sistem: FFmpeg + OpenCV runtime
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ffmpeg \
+        libgl1-mesa-glx \
+        libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Dependințe Python
+COPY runpod_requirements.txt .
+RUN pip install --no-cache-dir -r runpod_requirements.txt
+
+# Pre-descărcăm greutățile LaMa în imagine (cold start mai rapid)
+# Modelul se descarcă ~100MB de pe Hugging Face
+RUN python -c "from simple_lama_inpainting import SimpleLama; SimpleLama(); print('LaMa weights OK')"
+
+# Copiem handler-ul
+COPY runpod_handler.py .
+
+CMD ["python", "-u", "runpod_handler.py"]

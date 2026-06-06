@@ -1,0 +1,2048 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Caption Eraser | Viralio</title>
+
+<!-- Viralio fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,700;9..144,900&family=Geist:wght@300..900&family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<!-- Favicons -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="shortcut icon" href="/favicon.ico">
+
+<style>
+/* ═══════════════════════════════════════════════════════════
+   VIRALIO DESIGN TOKENS
+═══════════════════════════════════════════════════════════ */
+:root {
+  --bg-base:       #07070f;
+  --bg-elevated:   #0d0d1a;
+  --bg-card:       rgba(255,255,255,0.03);
+  --bg-card-hover: rgba(255,255,255,0.055);
+  --border:        rgba(255,255,255,0.07);
+  --border-strong: rgba(255,255,255,0.12);
+  --text-primary:  #e8e8f4;
+  --text-muted:    rgba(255,255,255,0.45);
+  --text-faint:    rgba(255,255,255,0.22);
+  --accent:        #65d69e;
+  --accent-dim:    rgba(101,214,158,0.12);
+  --accent-border: rgba(101,214,158,0.3);
+  --indigo:        #6366f1;
+  --indigo-dim:    rgba(99,102,241,0.14);
+  --indigo-border: rgba(99,102,241,0.32);
+  --gold:          #f5c842;
+  --red:           #f87171;
+  --green:         #34d399;
+  --sidebar-w:     420px;
+}
+
+html.light {
+  --bg-base:       #f0f0f8;
+  --bg-elevated:   #ffffff;
+  --bg-card:       rgba(0,0,0,0.04);
+  --bg-card-hover: rgba(0,0,0,0.07);
+  --border:        rgba(0,0,0,0.08);
+  --border-strong: rgba(0,0,0,0.13);
+  --text-primary:  #1a1a2e;
+  --text-muted:    rgba(0,0,0,0.5);
+  --text-faint:    rgba(0,0,0,0.3);
+  --accent:        #1a9e5c;
+  --accent-dim:    rgba(26,158,92,0.1);
+  --accent-border: rgba(26,158,92,0.3);
+  --indigo-dim:    rgba(79,70,229,0.1);
+  --indigo-border: rgba(79,70,229,0.3);
+  --gold:          #b8860b;
+  --red:           #dc2626;
+  --green:         #059669;
+}
+
+/* ── RESET ── */
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html { background:var(--bg-base); height:100%; overflow:hidden; }
+img, video { max-width:100%; display:block; }
+
+/* ── BODY ── */
+body {
+  background:var(--bg-base);
+  color:var(--text-primary);
+  font-family:'Geist','Inter',sans-serif;
+  -webkit-font-smoothing:antialiased;
+  height:100dvh;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+
+/* Noise overlay */
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events:none; z-index:1; opacity:0.5;
+}
+html.light body::before { opacity:0.15; }
+
+/* ── AMBIENT ORBS ── */
+.orb { position:fixed; border-radius:50%; filter:blur(130px); pointer-events:none; z-index:0; }
+.orb-1 { width:700px; height:700px; background:radial-gradient(circle,rgba(99,102,241,.11) 0%,transparent 70%); top:-280px; right:-160px; }
+.orb-2 { width:500px; height:500px; background:radial-gradient(circle,rgba(101,214,158,.07) 0%,transparent 70%); bottom:-160px; left:40px; }
+.orb-3 { width:350px; height:350px; background:radial-gradient(circle,rgba(99,102,241,.05) 0%,transparent 70%); top:38%; left:32%; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width:4px; height:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(255,255,255,.1); border-radius:99px; }
+::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,.2); }
+html.light ::-webkit-scrollbar-thumb { background:rgba(0,0,0,.12); }
+
+/* ═══════════════════════════════════════════════════════════
+   APP SHELL
+═══════════════════════════════════════════════════════════ */
+#app {
+  flex:1;
+  display:flex;
+  overflow:hidden;
+  position:relative;
+  z-index:2;
+  padding:8px;
+  gap:10px;
+  max-width:1400px;
+  margin:0 auto;
+  width:100%;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════════════════════ */
+#sidebar {
+  width:var(--sidebar-w);
+  flex-shrink:0;
+  display:flex;
+  flex-direction:column;
+  background:rgba(9,9,18,.98);
+  border:1px solid var(--border);
+  border-radius:20px;
+  backdrop-filter:blur(20px);
+  overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,.4);
+}
+html.light #sidebar { background:rgba(255,255,255,.98); }
+
+.sidebar-scroll {
+  flex:1;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding:18px 16px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+.sidebar-footer {
+  padding:14px 16px;
+  border-top:1px solid var(--border);
+  background:rgba(0,0,0,.25);
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  flex-shrink:0;
+}
+html.light .sidebar-footer { background:rgba(0,0,0,.03); }
+
+/* ═══════════════════════════════════════════════════════════
+   FIELD LABEL
+═══════════════════════════════════════════════════════════ */
+.field-label {
+  font-size:.6rem; font-weight:700;
+  text-transform:uppercase; letter-spacing:.1em;
+  color:var(--text-faint);
+  margin-bottom:8px;
+  display:flex; align-items:center; gap:6px;
+}
+.field-label i { color:var(--accent); font-size:.62rem; }
+
+/* ═══════════════════════════════════════════════════════════
+   CARD SURFACE
+═══════════════════════════════════════════════════════════ */
+.card {
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:14px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DROPZONE
+═══════════════════════════════════════════════════════════ */
+#dropZone {
+  border:1.5px dashed var(--border-strong);
+  border-radius:14px;
+  padding:24px 16px;
+  text-align:center;
+  cursor:pointer;
+  transition:all .25s cubic-bezier(.16,1,.3,1);
+  background:var(--bg-card);
+}
+#dropZone:hover, #dropZone.active {
+  border-color:var(--accent-border);
+  background:var(--accent-dim);
+}
+.dz-icon {
+  width:44px; height:44px; border-radius:12px;
+  background:var(--bg-card); border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  margin:0 auto 10px;
+  font-size:1.1rem; color:var(--text-muted);
+  transition:all .25s;
+}
+#dropZone:hover .dz-icon, #dropZone.active .dz-icon {
+  background:var(--accent-dim); border-color:var(--accent-border); color:var(--accent);
+}
+
+/* ── FILE INFO ── */
+#fileInfo {
+  display:none;
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:9px 12px;
+  align-items:center;
+  gap:10px;
+}
+#fileInfo.show { display:flex; }
+
+/* ═══════════════════════════════════════════════════════════
+   MODEL CARDS
+═══════════════════════════════════════════════════════════ */
+.model-card {
+  background:var(--bg-card);
+  border:1.5px solid var(--border);
+  border-radius:12px;
+  padding:11px 12px;
+  cursor:pointer;
+  transition:all .2s cubic-bezier(.16,1,.3,1);
+  display:flex; align-items:center; gap:11px;
+  user-select:none;
+}
+.model-card:hover { background:var(--bg-card-hover); border-color:var(--border-strong); }
+.model-card.sel-fast     { border-color:rgba(251,146,60,.5);  background:rgba(251,146,60,.07); }
+.model-card.sel-standard { border-color:var(--accent-border); background:var(--accent-dim); }
+.model-card.sel-ai       { border-color:var(--indigo-border); background:var(--indigo-dim); }
+
+.m-icon {
+  width:34px; height:34px; border-radius:9px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:.85rem; flex-shrink:0;
+}
+.m-icon-fast     { background:rgba(251,146,60,.15); color:#fb923c; }
+.m-icon-standard { background:var(--accent-dim);    color:var(--accent); }
+.m-icon-ai       { background:var(--indigo-dim);    color:#a5a8ff; }
+
+/* ═══════════════════════════════════════════════════════════
+   CHIPS / BADGES
+═══════════════════════════════════════════════════════════ */
+.chip {
+  padding:2px 7px; border-radius:99px;
+  font-size:.52rem; font-weight:800;
+  display:inline-flex; align-items:center; gap:3px;
+  white-space:nowrap; letter-spacing:.04em;
+}
+.chip-orange { background:rgba(251,146,60,.15); color:#fb923c; border:1px solid rgba(251,146,60,.25); }
+.chip-accent { background:var(--accent-dim); color:var(--accent); border:1px solid var(--accent-border); }
+.chip-indigo { background:var(--indigo-dim); color:#a5a8ff;   border:1px solid var(--indigo-border); }
+.chip-gold   { background:rgba(245,200,66,.12); color:var(--gold); border:1px solid rgba(245,200,66,.25); }
+.chip-dark   { background:rgba(255,255,255,.07); color:var(--text-muted); border:1px solid var(--border); }
+
+/* ═══════════════════════════════════════════════════════════
+   SMALL BUTTONS
+═══════════════════════════════════════════════════════════ */
+.btn-sm {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:5px 11px; border-radius:8px;
+  font-size:.58rem; font-weight:800;
+  text-transform:uppercase; letter-spacing:.06em;
+  border:1px solid var(--border);
+  background:var(--bg-card); color:var(--text-muted);
+  cursor:pointer; transition:all .2s; white-space:nowrap;
+  font-family:'Geist','Inter',sans-serif;
+}
+.btn-sm:hover { background:var(--bg-card-hover); border-color:var(--border-strong); color:var(--text-primary); }
+.btn-sm:disabled { opacity:.35; cursor:not-allowed; pointer-events:none; }
+.btn-accent { border-color:var(--accent-border); color:var(--accent); background:var(--accent-dim); }
+.btn-accent:hover { background:rgba(101,214,158,.18); }
+.btn-indigo { border-color:var(--indigo-border); color:#a5a8ff; background:var(--indigo-dim); }
+.btn-indigo:hover { background:rgba(99,102,241,.22); }
+
+/* ═══════════════════════════════════════════════════════════
+   PROCESS BUTTON (GEN)
+═══════════════════════════════════════════════════════════ */
+#processBtn {
+  width:100%; padding:14px;
+  background:linear-gradient(135deg,#3ecf8e 0%,#65d69e 50%,#4ade80 100%);
+  background-size:200% 200%;
+  animation:genGrad 5s ease infinite,genGlow 3s ease-in-out infinite;
+  color:#072215; font-family:'Geist','Inter',sans-serif;
+  font-weight:900; font-size:.88rem; letter-spacing:.04em;
+  border-radius:13px; border:none; cursor:pointer;
+  transition:all .3s; overflow:hidden; position:relative;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+#processBtn::before {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);
+  transform:translateX(-100%); transition:transform .6s;
+}
+#processBtn:hover::before { transform:translateX(100%); }
+#processBtn:hover { box-shadow:0 20px 40px rgba(101,214,158,.35); transform:translateY(-2px); }
+#processBtn:disabled {
+  opacity:.5; cursor:not-allowed; transform:none;
+  animation:none;
+  background:rgba(255,255,255,.07); color:var(--text-muted);
+}
+@keyframes genGrad { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+@keyframes genGlow {
+  0%,100%{box-shadow:0 4px 20px rgba(101,214,158,.2)}
+  50%{box-shadow:0 4px 32px rgba(101,214,158,.42)}
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DETECT STATUS
+═══════════════════════════════════════════════════════════ */
+#detect-status {
+  display:none;
+  font-size:.68rem; font-weight:600;
+  padding:7px 11px; border-radius:8px;
+  background:var(--bg-card); border:1px solid var(--border);
+  align-items:center; gap:7px; margin-bottom:8px;
+}
+#detect-status.show { display:flex; }
+
+/* ═══════════════════════════════════════════════════════════
+   BOX CARDS (sidebar sliders)
+═══════════════════════════════════════════════════════════ */
+.box-card {
+  background:var(--bg-card);
+  border-radius:10px; padding:10px;
+  border-left:2px solid var(--accent);
+  animation:fadeInUp .3s cubic-bezier(.16,1,.3,1) both;
+}
+.box-card-0 { border-left-color:var(--accent); }
+.box-card-1 { border-left-color:#6366f1; }
+.box-card-2 { border-left-color:#f5c842; }
+.box-card-3 { border-left-color:#f87171; }
+.box-card-4 { border-left-color:#c084fc; }
+
+/* Range sliders */
+input[type=range] {
+  -webkit-appearance:none; width:100%; height:4px;
+  background:var(--border-strong); border-radius:4px;
+  outline:none; margin-top:5px; cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none; width:13px; height:13px;
+  border-radius:50%; background:var(--accent);
+  border:2px solid var(--bg-elevated);
+  box-shadow:0 0 6px rgba(101,214,158,.4);
+  transition:transform .1s; cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb:hover { transform:scale(1.3); }
+
+/* ═══════════════════════════════════════════════════════════
+   HISTORY ITEMS
+═══════════════════════════════════════════════════════════ */
+.hist-item {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:11px; padding:9px 11px;
+  display:flex; align-items:center; gap:9px;
+  transition:all .2s; animation:fadeInUp .35s cubic-bezier(.16,1,.3,1) both;
+}
+.hist-item:hover { background:var(--bg-card-hover); border-color:var(--border-strong); }
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN / PREVIEW AREA
+═══════════════════════════════════════════════════════════ */
+#main {
+  flex:1; display:flex; flex-direction:column; overflow:hidden;
+  background:rgba(9,9,18,.7);
+  border:1px solid var(--border);
+  border-radius:20px;
+  box-shadow:inset 0 2px 24px rgba(0,0,0,.3), 0 8px 32px rgba(0,0,0,.3);
+}
+html.light #main { background:rgba(240,240,248,.8); }
+
+#preview-area {
+  flex:1; display:flex; align-items:center; justify-content:center;
+  padding:24px; overflow:hidden; position:relative;
+}
+#preview-area::before {
+  content:''; position:absolute; inset:0; border-radius:20px;
+  background-image:radial-gradient(circle at 1px 1px, var(--border-strong) 1px, transparent 0);
+  background-size:28px 28px; opacity:.4; pointer-events:none;
+}
+
+/* ── EMPTY STATE ── */
+#output-empty { text-align:center; max-width:340px; animation:fadeInUp .5s cubic-bezier(.16,1,.3,1) both; }
+.empty-icon {
+  width:76px; height:76px; background:var(--bg-card);
+  border:1px solid var(--border); border-radius:22px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.9rem; color:var(--text-faint);
+  margin:0 auto 18px;
+}
+
+/* ── VIDEO WRAPPERS ── */
+#output-preview {
+  display:none; position:relative;
+  background:#000; border-radius:16px; overflow:hidden;
+  box-shadow:0 32px 80px rgba(0,0,0,.65),0 0 0 1px var(--border);
+  max-height:calc(100dvh - 140px); max-width:100%;
+}
+#output-preview.show { display:block; }
+#preview-player { display:block; max-height:calc(100dvh - 140px); max-width:100%; }
+
+#boxes-overlay { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+
+/* ── LOADING ── */
+#output-loading {
+  display:none; position:relative;
+  background:#000; border-radius:16px; overflow:hidden;
+  box-shadow:0 32px 80px rgba(0,0,0,.65);
+  min-width:300px; min-height:220px;
+  align-items:center; justify-content:center;
+  max-height:calc(100dvh - 140px); max-width:100%;
+}
+#output-loading.show { display:flex; }
+
+.scanner-line {
+  position:absolute; left:0; right:0; top:0; height:2px;
+  background:var(--accent);
+  box-shadow:0 0 20px var(--accent),0 0 40px var(--accent);
+  z-index:20; opacity:.8;
+  animation:scan 2s linear infinite;
+}
+@keyframes scan { 0%{transform:translateY(0)} 100%{transform:translateY(60000%)} }
+
+.loading-inner {
+  position:relative; z-index:10; text-align:center; padding:36px;
+  background:rgba(0,0,0,.55); backdrop-filter:blur(12px);
+  border-radius:14px; border:1px solid var(--border);
+}
+.spin-ring {
+  width:52px; height:52px;
+  border:3px solid rgba(255,255,255,.07); border-top-color:var(--accent);
+  border-radius:50%; animation:spin 1s linear infinite;
+  margin:0 auto 14px;
+  box-shadow:0 0 18px rgba(101,214,158,.3);
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* ── RESULT ── */
+#output-result {
+  display:none; flex-direction:column; align-items:center; gap:14px;
+  max-width:100%; animation:fadeInUp .5s cubic-bezier(.16,1,.3,1) both;
+}
+#output-result.show { display:flex; }
+
+#output-result-video-wrapper {
+  position:relative; background:#000;
+  border-radius:16px; overflow:hidden;
+  box-shadow:0 32px 80px rgba(0,0,0,.65),0 0 0 1px rgba(52,211,153,.2);
+}
+#result-player { display:block; max-height:calc(100dvh - 200px); max-width:100%; }
+
+.result-badge {
+  position:absolute; top:10px; right:10px;
+  background:var(--green); color:#052e16;
+  font-size:.58rem; font-weight:800; letter-spacing:.04em;
+  padding:4px 10px; border-radius:99px;
+  display:flex; align-items:center; gap:5px;
+  box-shadow:0 4px 16px rgba(52,211,153,.4);
+}
+
+#download-btn {
+  display:flex; align-items:center; gap:8px;
+  padding:11px 26px; border-radius:12px;
+  background:var(--bg-card); border:1px solid var(--border-strong);
+  color:var(--text-primary); font-family:'Geist','Inter',sans-serif;
+  font-weight:700; font-size:.82rem; cursor:pointer;
+  transition:all .25s cubic-bezier(.16,1,.3,1);
+}
+#download-btn:hover {
+  background:var(--accent-dim); border-color:var(--accent-border); color:var(--accent);
+  transform:translateY(-2px); box-shadow:0 8px 24px rgba(101,214,158,.2);
+}
+#download-btn i { color:var(--accent); }
+
+/* ═══════════════════════════════════════════════════════════
+   DETECTION BOXES (overlay pe video)
+═══════════════════════════════════════════════════════════ */
+.detection-box { position:absolute; z-index:30; pointer-events:auto; }
+.drag-area { width:100%; height:100%; cursor:move; display:flex; align-items:center; justify-content:center; }
+
+.box-color-0 { border:2px solid var(--accent);  background:rgba(101,214,158,.12); }
+.box-color-1 { border:2px solid #6366f1;         background:rgba(99,102,241,.12); }
+.box-color-2 { border:2px solid #f5c842;         background:rgba(245,200,66,.12); }
+.box-color-3 { border:2px solid #f87171;         background:rgba(248,113,113,.12); }
+.box-color-4 { border:2px solid #c084fc;         background:rgba(192,132,252,.12); }
+
+.box-color-0 .resizer { background:var(--accent); }
+.box-color-1 .resizer { background:#6366f1; }
+.box-color-2 .resizer { background:#f5c842; }
+.box-color-3 .resizer { background:#f87171; }
+.box-color-4 .resizer { background:#c084fc; }
+
+.box-color-0 .drag-icon { color:rgba(101,214,158,.4); }
+.box-color-1 .drag-icon { color:rgba(99,102,241,.4); }
+.box-color-2 .drag-icon { color:rgba(245,200,66,.4); }
+.box-color-3 .drag-icon { color:rgba(248,113,113,.4); }
+.box-color-4 .drag-icon { color:rgba(192,132,252,.4); }
+
+.box-label { font-size:.5rem; font-weight:900; padding:2px 6px; border-radius:99px; white-space:nowrap; }
+.box-label-0 { background:var(--accent); color:#072215; }
+.box-label-1 { background:#6366f1; color:#fff; }
+.box-label-2 { background:#f5c842; color:#422006; }
+.box-label-3 { background:#f87171; color:#fff; }
+.box-label-4 { background:#c084fc; color:#fff; }
+
+/* Resize handles */
+.resizer { position:absolute; border:2px solid #fff; border-radius:50%; z-index:40; }
+.resizer-tl { top:-5px;  left:-5px;  width:10px; height:10px; cursor:nwse-resize; }
+.resizer-tr { top:-5px;  right:-5px; width:10px; height:10px; cursor:nesw-resize; }
+.resizer-bl { bottom:-5px; left:-5px;  width:10px; height:10px; cursor:nesw-resize; }
+.resizer-br { bottom:-5px; right:-5px; width:10px; height:10px; cursor:nwse-resize; }
+.resizer-t  { top:-3px;  left:50%; transform:translateX(-50%); width:18px; height:6px; border-radius:3px; cursor:ns-resize; }
+.resizer-b  { bottom:-3px; left:50%; transform:translateX(-50%); width:18px; height:6px; border-radius:3px; cursor:ns-resize; }
+.resizer-l  { left:-3px; top:50%;  transform:translateY(-50%); width:6px; height:18px; border-radius:3px; cursor:ew-resize; }
+.resizer-r  { right:-3px; top:50%; transform:translateY(-50%); width:6px; height:18px; border-radius:3px; cursor:ew-resize; }
+
+/* ═══════════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════════ */
+#toast {
+  position:fixed; bottom:22px; left:50%;
+  transform:translateX(-50%) translateY(80px);
+  background:rgba(10,10,20,.96); backdrop-filter:blur(20px);
+  border:1px solid var(--border-strong); color:var(--text-primary);
+  padding:9px 22px; border-radius:99px;
+  font-size:.8rem; font-weight:600; white-space:nowrap;
+  z-index:200000;
+  transition:transform .4s cubic-bezier(.34,1.56,.64,1), opacity .3s;
+  opacity:0; box-shadow:0 20px 40px rgba(0,0,0,.5);
+}
+#toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+html.light #toast { background:rgba(0,0,0,.88); color:#fff; }
+
+/* ═══════════════════════════════════════════════════════════
+   LOGIN MODAL
+═══════════════════════════════════════════════════════════ */
+#login-modal {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,.72); backdrop-filter:blur(14px);
+  z-index:99999; align-items:center; justify-content:center;
+  opacity:0; transition:opacity .3s;
+}
+#login-modal.show { display:flex; opacity:1; }
+.modal-box {
+  background:var(--bg-elevated); border:1px solid var(--border-strong);
+  border-radius:24px; padding:36px;
+  text-align:center; max-width:380px; width:90%;
+  transform:translateY(20px); transition:transform .4s cubic-bezier(.16,1,.3,1);
+  box-shadow:0 40px 80px rgba(0,0,0,.6); position:relative;
+}
+#login-modal.show .modal-box { transform:translateY(0); }
+
+/* ═══════════════════════════════════════════════════════════
+   MOBILE TABS
+═══════════════════════════════════════════════════════════ */
+#mob-tabs {
+  display:none;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.mob-tab {
+  flex:1; padding:9px; text-align:center;
+  font-size:.65rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase;
+  color:var(--text-muted); cursor:pointer;
+  border-bottom:2px solid transparent; transition:all .2s;
+}
+.mob-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+/* ═══════════════════════════════════════════════════════════
+   ANIMATIONS
+═══════════════════════════════════════════════════════════ */
+@keyframes fadeInUp {
+  from { opacity:0; transform:translateY(14px) scale(.98); }
+  to   { opacity:1; transform:translateY(0) scale(1); }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MOBILE LAYOUT  ≤ 768px
+═══════════════════════════════════════════════════════════ */
+@media (max-width:768px) {
+  /* ── Shell ── */
+  #app {
+    flex-direction:column;
+    padding:4px;
+    gap:4px;
+    overflow:hidden;
+  }
+
+  /* ── Preview în sus, sidebar jos ── */
+  #main {
+    order:1;
+    height:44dvh;
+    min-height:0;
+    border-radius:14px;
+    flex-shrink:0;
+  }
+  #sidebar {
+    order:2;
+    width:100%;
+    height:56dvh;
+    min-height:0;
+    border-radius:14px;
+    flex-shrink:0;
+  }
+
+  /* ── Preview area ── */
+  #preview-area { padding:8px; }
+
+  /* ── Video players: se încadrează strict în panou ── */
+  #output-preview {
+    max-height:calc(44dvh - 16px);
+    max-width:100%;
+    width:auto;
+  }
+  #preview-player {
+    max-height:calc(44dvh - 16px);
+    max-width:100%;
+    width:auto;
+    height:auto;
+  }
+  #output-loading {
+    max-height:calc(44dvh - 16px);
+    max-width:100%;
+    width:100%;
+  }
+  #output-result { width:100%; max-width:100%; }
+  #output-result-video-wrapper { max-width:100%; }
+  #result-player {
+    max-height:calc(44dvh - 70px);
+    max-width:100%;
+    width:auto;
+    height:auto;
+  }
+  #download-btn { font-size:.72rem; padding:9px 18px; }
+
+  /* ── Sidebar scroll ── */
+  .sidebar-scroll { padding:8px 10px; gap:8px; }
+  .sidebar-footer { padding:8px 10px; gap:8px; }
+
+  /* ── Tabs ── */
+  #mob-tabs { display:flex; }
+
+  /* ── Model cards: chips să nu spargă rândul ── */
+  .model-card { padding:9px 10px; gap:8px; }
+  .chip { font-size:.48rem; padding:2px 5px; }
+  .m-icon { width:30px; height:30px; font-size:.78rem; }
+
+  /* ── Box cards mai compacte ── */
+  .box-card { padding:8px; }
+
+  /* ── Social bubble mai mic pe mobile ── */
+  #social-bubble { bottom:10px; right:10px; gap:4px; }
+  .soc-btn { width:34px; height:34px; font-size:.75rem; }
+
+  /* ── Toast să nu iasă din ecran ── */
+  #toast { font-size:.72rem; padding:8px 16px; white-space:normal; text-align:center; max-width:90vw; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SOCIAL BUBBLE
+═══════════════════════════════════════════════════════════ */
+#social-bubble {
+  position:fixed; bottom:18px; right:18px;
+  z-index:10000; display:flex; align-items:center; gap:6px;
+}
+.soc-btn {
+  width:40px; height:40px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:.85rem; color:#fff; text-decoration:none;
+  transition:all .25s cubic-bezier(.16,1,.3,1);
+  box-shadow:0 4px 16px rgba(0,0,0,.35);
+}
+.soc-btn:hover { transform:translateY(-3px) scale(1.1); }
+.soc-discord { background:#5865F2; }
+.soc-tg {
+  background:linear-gradient(135deg,#0088cc,#00aaff);
+  position:relative; overflow:hidden;
+}
+.soc-tg::after {
+  content:''; position:absolute; inset:0; border-radius:50%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);
+  transform:translateX(-100%);
+  animation:sshine 2.8s infinite cubic-bezier(.4,0,.2,1);
+}
+@keyframes sshine {
+  0%{transform:translateX(-150%) skewX(-20deg); opacity:0}
+  20%{opacity:1} 80%{opacity:1}
+  100%{transform:translateX(200%) skewX(-20deg); opacity:0}
+}
+.soc-tg-dot {
+  position:absolute; top:-2px; right:-2px; width:10px; height:10px;
+  background:#ef4444; border-radius:50%; border:2px solid var(--bg-base);
+  animation:pulse 1.5s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.7;transform:scale(.9)} }
+
+/* ═══════════════════════════════════════════════════════════
+   UI/UX-PRO-MAX UPGRADES — bento + glass + compare + confetti
+═══════════════════════════════════════════════════════════ */
+
+/* ── Drop-zone radial glow + drag-active pulse ── */
+#dropZone { position:relative; overflow:hidden; }
+#dropZone::after {
+  content:''; position:absolute; inset:-1px; border-radius:14px;
+  pointer-events:none; opacity:0; transition:opacity .35s ease;
+  background:radial-gradient(circle at var(--mx,50%) var(--my,50%),
+             rgba(101,214,158,.18) 0%, transparent 55%);
+}
+#dropZone:hover::after { opacity:1; }
+#dropZone.active::after { opacity:1; }
+#dropZone.active {
+  border-color:var(--accent);
+  background:var(--accent-dim);
+  animation:dzPulse 1.4s cubic-bezier(.4,0,.2,1) infinite;
+}
+@keyframes dzPulse {
+  0%,100% { box-shadow:0 0 0 0 rgba(101,214,158,.32); }
+  70% { box-shadow:0 0 0 16px rgba(101,214,158,0); }
+}
+
+/* ── Glass enhancement pe model-card ── */
+.model-card { backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+.model-card.sel-fast, .model-card.sel-standard, .model-card.sel-ai {
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 8px 28px rgba(0,0,0,.25);
+}
+
+/* ── BEFORE/AFTER COMPARE SLIDER ── */
+.compare-wrap { position:relative; --cmp:50%; }
+.compare-wrap.cmp-on { cursor:ew-resize; }
+.compare-wrap.cmp-on .result-badge { display:none; }   /* evită suprapunerea cu label-ul "Curățat" */
+#original-player {
+  position:absolute; inset:0; width:100%; height:100%;
+  object-fit:contain; background:#000; z-index:1;
+  pointer-events:none;
+  display:none;                /* ascuns când compare e off */
+}
+.compare-wrap.cmp-on #original-player { display:block; }
+#result-player {
+  position:relative; z-index:2;  /* mereu deasupra → vezi rezultatul curățat by default */
+}
+#result-player.cmp-active {
+  clip-path:inset(0 calc(100% - var(--cmp)) 0 0);
+  -webkit-clip-path:inset(0 calc(100% - var(--cmp)) 0 0);
+}
+#compare-divider {
+  display:none;
+  position:absolute; top:0; bottom:0;
+  left:var(--cmp); transform:translateX(-50%);
+  width:2px; background:#fff; z-index:5;
+  box-shadow:0 0 14px rgba(255,255,255,.55), 0 0 28px rgba(101,214,158,.35);
+  pointer-events:none;
+}
+.compare-wrap.cmp-on #compare-divider { display:block; }
+.compare-handle {
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  width:42px; height:42px; border-radius:50%;
+  background:rgba(8,8,16,.78); backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  border:2px solid #fff;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; font-size:.78rem; pointer-events:auto;
+  cursor:ew-resize;
+  box-shadow:0 8px 24px rgba(0,0,0,.45), 0 0 18px rgba(101,214,158,.4);
+  transition:transform .15s;
+}
+.compare-handle:hover { transform:translate(-50%,-50%) scale(1.08); }
+.compare-handle i + i { margin-left:1px; }
+.compare-label {
+  position:absolute; top:12px; z-index:4;
+  font-size:.52rem; font-weight:900; letter-spacing:.08em;
+  padding:4px 9px; border-radius:99px;
+  text-transform:uppercase; pointer-events:none;
+  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  opacity:0; transition:opacity .25s;
+}
+.compare-wrap.cmp-on .compare-label { opacity:1; }
+.compare-label-original {
+  left:12px; background:rgba(0,0,0,.62);
+  color:#fff; border:1px solid rgba(255,255,255,.18);
+}
+.compare-label-clean {
+  right:12px; background:var(--accent); color:#052e16;
+  box-shadow:0 4px 16px rgba(101,214,158,.4);
+}
+
+/* ── BENTO RESULT ACTIONS ── */
+.result-actions-bento {
+  display:grid;
+  grid-template-columns:1.5fr 1fr 1fr 1fr;
+  gap:8px;
+  width:100%;
+  max-width:560px;
+  margin-top:4px;
+}
+.ra-card {
+  background:rgba(255,255,255,.04);
+  border:1px solid var(--border);
+  border-radius:13px;
+  padding:13px 8px 11px;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:6px;
+  color:var(--text-primary);
+  font-family:'Geist','Inter',sans-serif;
+  font-weight:700; font-size:.66rem; letter-spacing:.02em;
+  cursor:pointer; transition:all .2s cubic-bezier(.16,1,.3,1);
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  text-decoration:none;
+  position:relative; overflow:hidden;
+}
+.ra-card i { font-size:1.05rem; color:var(--text-muted); transition:color .2s; }
+.ra-card:hover {
+  transform:translateY(-2px);
+  border-color:var(--border-strong);
+  background:rgba(255,255,255,.07);
+}
+.ra-card.ra-primary {
+  background:linear-gradient(135deg, rgba(101,214,158,.22), rgba(101,214,158,.08));
+  border-color:var(--accent-border);
+  color:var(--accent);
+}
+.ra-card.ra-primary i { color:var(--accent); }
+.ra-card.ra-primary:hover {
+  background:linear-gradient(135deg, rgba(101,214,158,.32), rgba(101,214,158,.14));
+  box-shadow:0 12px 28px rgba(101,214,158,.22);
+}
+.ra-card.ra-active {
+  background:var(--indigo-dim);
+  border-color:var(--indigo-border);
+  color:#a5a8ff;
+}
+.ra-card.ra-active i { color:#a5a8ff; }
+@media (max-width:768px) {
+  .result-actions-bento { grid-template-columns:1fr 1fr; max-width:100%; }
+  .ra-card { font-size:.6rem; padding:10px 6px 9px; }
+  .ra-card i { font-size:.92rem; }
+}
+
+/* ── CONFETTI canvas ── */
+#confetti-canvas {
+  position:fixed; inset:0; pointer-events:none;
+  z-index:9999;
+}
+
+/* ── PROCESSING METER (live %) ── */
+#proc-meter {
+  margin-top:14px;
+  height:4px; width:200px; border-radius:99px;
+  background:rgba(255,255,255,.08); overflow:hidden;
+  position:relative;
+}
+#proc-meter::after {
+  content:''; position:absolute; inset:0;
+  width:30%;
+  background:linear-gradient(90deg,
+    transparent, var(--accent), transparent);
+  animation:procSlide 1.6s ease-in-out infinite;
+}
+@keyframes procSlide {
+  0% { transform:translateX(-100%); }
+  100% { transform:translateX(400%); }
+}
+
+</style>
+</head>
+<body>
+
+<!-- Ambient orbs -->
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<!-- Viralio Nav (extern) -->
+<script>window.VIRALIO_NAV_CONFIG = { currentApp: 'captions' };</script>
+<script src="https://viralio.ro/viralio-nav.js?v=1"></script>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Confetti -->
+<canvas id="confetti-canvas"></canvas>
+
+<!-- Login modal -->
+<div id="login-modal">
+  <div class="modal-box">
+    <button onclick="closeLoginModal()" style="position:absolute;top:14px;right:14px;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;padding:4px;"><i class="fa-solid fa-xmark"></i></button>
+    <div style="width:52px;height:52px;border-radius:14px;background:var(--accent-dim);border:1px solid var(--accent-border);display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:var(--accent);margin:0 auto 14px;">
+      <i class="fas fa-fingerprint"></i>
+    </div>
+    <h2 style="font-family:'Fraunces',serif;font-weight:900;font-size:1.4rem;margin-bottom:7px;">Intră în cont</h2>
+    <p style="color:var(--text-muted);font-size:.78rem;margin-bottom:22px;line-height:1.5;">Conectează-te pentru a procesa videoclipuri.</p>
+    <div style="display:flex;justify-content:center;background:var(--bg-card);border:1px solid var(--border);padding:14px;border-radius:14px;">
+      <div id="g_id_onload"
+        data-client_id="743541351685-br4h5r61n3ai28bbhm9blt34944rju8p.apps.googleusercontent.com"
+        data-context="signin" data-ux_mode="popup"
+        data-callback="handleCredentialResponse" data-auto_prompt="false"></div>
+      <div class="g_id_signin" data-type="standard" data-shape="rectangular"
+        data-theme="filled_black" data-text="signin_with" data-size="large"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ APP ═══════════════════════════ -->
+<div id="app">
+
+  <!-- ══════════ SIDEBAR ══════════ -->
+  <aside id="sidebar">
+
+    <!-- Mobile tabs -->
+    <div id="mob-tabs">
+      <div class="mob-tab active" id="tab-controls-btn" onclick="switchTab('controls')">
+        <i class="fa-solid fa-sliders" style="margin-right:4px;"></i>Controale
+      </div>
+      <div class="mob-tab" id="tab-history-btn" onclick="switchTab('history')">
+        <i class="fa-solid fa-clock-rotate-left" style="margin-right:4px;"></i>Istoric
+      </div>
+    </div>
+
+    <!-- ── CONTROLS PANEL ── -->
+    <div id="tab-controls" class="sidebar-scroll">
+
+      <!-- Header -->
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:var(--accent-dim);border:1px solid var(--accent-border);display:flex;align-items:center;justify-content:center;font-size:.95rem;color:var(--accent);flex-shrink:0;">
+          <i class="fa-solid fa-eraser"></i>
+        </div>
+        <div>
+          <h1 style="font-family:'Fraunces',serif;font-weight:900;font-size:1.08rem;line-height:1.15;">Caption Eraser</h1>
+          <p style="font-size:.6rem;color:var(--text-muted);margin-top:1px;">Șterge text & watermark din video</p>
+        </div>
+      </div>
+
+      <!-- 1. Upload -->
+      <div>
+        <div class="field-label"><i class="fa-solid fa-cloud-arrow-up"></i> 1. Încarcă Video</div>
+        <div id="dropZone">
+          <div class="dz-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+          <p style="font-size:.8rem;font-weight:700;margin-bottom:3px;">Trage sau apasă</p>
+          <p style="font-size:.62rem;color:var(--text-muted);">MP4 · MOV · max 200 MB</p>
+          <input type="file" id="fileInput" style="display:none;" accept="video/mp4,video/quicktime">
+        </div>
+
+        <!-- Eroare durată -->
+        <div id="duration-error" style="display:none;margin-top:8px;padding:9px 12px;border-radius:10px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);display:none;align-items:center;gap:8px;animation:fadeInUp .3s cubic-bezier(.16,1,.3,1);">
+          <i class="fa-solid fa-circle-xmark" style="color:var(--red);font-size:.85rem;flex-shrink:0;"></i>
+          <div>
+            <p style="font-size:.72rem;font-weight:800;color:var(--red);">Video prea lung!</p>
+            <p id="duration-error-text" style="font-size:.62rem;color:rgba(248,113,113,.8);margin-top:1px;">Videoul tău depășește limita de 60 de secunde.</p>
+          </div>
+        </div>
+        <div id="fileInfo">
+          <div style="width:30px;height:30px;border-radius:8px;background:var(--accent-dim);border:1px solid var(--accent-border);display:flex;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0;font-size:.75rem;">
+            <i class="fa-solid fa-file-video"></i>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <p id="fileName" style="font-size:.75rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></p>
+            <p id="fileSize" style="font-size:.58rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace;margin-top:1px;"></p>
+          </div>
+          <button onclick="clearFile()" title="Șterge fișierul"
+            style="width:26px;height:26px;border-radius:7px;border:1px solid var(--border);background:none;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;font-size:.65rem;"
+            onmouseover="this.style.color='var(--red)';this.style.borderColor='rgba(248,113,113,.3)';this.style.background='rgba(248,113,113,.08)'"
+            onmouseout="this.style.color='var(--text-muted)';this.style.borderColor='var(--border)';this.style.background='none'">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. Model -->
+      <div>
+        <div class="field-label"><i class="fa-solid fa-microchip"></i> 2. Alege Modelul</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+
+          <div class="model-card" data-model="fast" data-cost="0.5">
+            <div class="m-icon m-icon-fast"><i class="fa-solid fa-bolt"></i></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:3px;">
+                <span style="font-size:.8rem;font-weight:700;">Instant</span>
+                <span class="chip chip-orange">1-3 sec</span>
+              </div>
+              <p style="font-size:.62rem;color:var(--text-muted);">Rapid — pot rămâne urme ușoare</p>
+            </div>
+            <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.76rem;color:#fb923c;flex-shrink:0;">0.5 <i class="fa-solid fa-coins" style="font-size:.6rem;"></i></span>
+          </div>
+
+          <div class="model-card sel-standard" data-model="standard" data-cost="0.75">
+            <div class="m-icon m-icon-standard"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:3px;">
+                <span style="font-size:.8rem;font-weight:700;">Standard</span>
+                <span class="chip chip-accent">10-120 sec</span>
+                <span class="chip chip-dark">RECOMANDAT</span>
+              </div>
+              <p style="font-size:.62rem;color:var(--text-muted);">Fundal reconstruit natural, fără urme</p>
+            </div>
+            <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.76rem;color:var(--accent);flex-shrink:0;">0.75 <i class="fa-solid fa-coins" style="font-size:.6rem;"></i></span>
+          </div>
+
+          <div class="model-card" data-model="ai" data-cost="2">
+            <div class="m-icon m-icon-ai"><i class="fa-solid fa-microchip"></i></div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:3px;">
+                <span style="font-size:.8rem;font-weight:700;">AI Perfect</span>
+                <span class="chip chip-indigo">10-60 sec</span>
+                <span class="chip chip-gold">CEL MAI BUN</span>
+              </div>
+              <p style="font-size:.62rem;color:var(--text-muted);">IA avansată — calitate maximă, fundal reconstruit perfect</p>
+            </div>
+            <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.76rem;color:#a5a8ff;flex-shrink:0;">1.5 <i class="fa-solid fa-coins" style="font-size:.6rem;"></i></span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 3. Masks -->
+      <div>
+        <div class="field-label"><i class="fa-solid fa-object-group"></i> 3. Zone de Șters</div>
+
+        <div id="detect-status" style="display:none !important;">
+          <i class="fa-solid fa-circle-notch fa-spin" id="detect-icon" style="color:var(--accent);"></i>
+          <span id="detect-text">Detectare automată...</span>
+        </div>
+
+        <div style="display:flex;gap:6px;margin-bottom:9px;">
+          <button id="addBoxBtn" class="btn-sm btn-accent">
+            <i class="fa-solid fa-plus"></i> ADAUGĂ ZONĂ
+          </button>
+        </div>
+
+        <div id="boxes-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+
+        <div style="margin-top:9px;padding:9px 11px;border-radius:9px;background:var(--indigo-dim);border:1px solid var(--indigo-border);display:flex;align-items:flex-start;gap:7px;">
+          <i class="fa-solid fa-lightbulb" style="color:#a5a8ff;font-size:.65rem;margin-top:2px;flex-shrink:0;"></i>
+          <p style="font-size:.62rem;color:var(--text-muted);line-height:1.5;">Trage casetele direct pe video sau folosește slider-ele. Poți adăuga până la 5 zone.</p>
+        </div>
+      </div>
+
+      <!-- History (desktop) -->
+      <div>
+        <div class="field-label" style="cursor:pointer;" onclick="toggleHistory()">
+          <i class="fa-solid fa-clock-rotate-left"></i> Istoric Sesiune
+          <i class="fa-solid fa-chevron-down" id="hist-chevron" style="margin-left:auto;font-size:.55rem;transition:transform .2s;"></i>
+        </div>
+        <div id="hist-list-desktop" style="display:flex;flex-direction:column;gap:5px;"></div>
+        <p id="hist-empty-desktop" style="font-size:.62rem;color:var(--text-faint);text-align:center;padding:10px 0;">Niciun video procesat în această sesiune</p>
+      </div>
+
+    </div><!-- /tab-controls -->
+
+    <!-- ── HISTORY PANEL (mobile) ── -->
+    <div id="tab-history" class="sidebar-scroll" style="display:none;">
+      <div class="field-label"><i class="fa-solid fa-clock-rotate-left"></i> Istoric Sesiune</div>
+      <div id="hist-list-mobile" style="display:flex;flex-direction:column;gap:6px;"></div>
+      <p id="hist-empty-mobile" style="font-size:.62rem;color:var(--text-faint);text-align:center;padding:16px 0;">Niciun video procesat în această sesiune</p>
+    </div>
+
+    <!-- Footer -->
+    <div class="sidebar-footer">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:.68rem;color:var(--text-muted);font-weight:600;">Cost procesare:</span>
+        <span id="cost-display"
+          style="background:var(--accent-dim);border:1px solid var(--accent-border);color:var(--accent);border-radius:99px;padding:3px 13px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.76rem;">
+          0.75 <i class="fa-solid fa-coins" style="font-size:.6rem;"></i>
+        </span>
+      </div>
+      <button id="processBtn">
+        <i class="fa-solid fa-eraser"></i> CURĂȚĂ TEXTUL
+      </button>
+    </div>
+
+  </aside><!-- /sidebar -->
+
+  <!-- ══════════ MAIN PREVIEW ══════════ -->
+  <main id="main">
+    <div id="preview-area">
+
+      <!-- Empty -->
+      <div id="output-empty">
+        <div class="empty-icon"><i class="fa-solid fa-film"></i></div>
+        <h2 style="font-family:'Fraunces',serif;font-size:1.55rem;font-weight:900;margin-bottom:8px;">Previzualizare</h2>
+        <p style="font-size:.76rem;color:var(--text-muted);line-height:1.65;max-width:270px;margin:0 auto;">
+          Încarcă un video din panoul lateral, poziționează masca și apasă <strong style="color:var(--accent);">Curăță Textul</strong>.
+        </p>
+      </div>
+
+      <!-- Preview + boxes -->
+      <div id="output-preview">
+        <video id="preview-player" controls></video>
+        <div id="boxes-overlay"></div>
+      </div>
+
+      <!-- Loading -->
+      <div id="output-loading">
+        <video id="processing-player" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:.2;filter:blur(8px);" loop muted playsinline></video>
+        <div class="scanner-line"></div>
+        <div class="loading-inner">
+          <div class="spin-ring"></div>
+          <h3 id="loading-text" style="font-size:.95rem;font-weight:700;margin-bottom:6px;color:var(--text-primary);">Se procesează...</h3>
+          <p style="font-size:.68rem;color:var(--accent);">Reconstruim fundalul...</p>
+          <div id="proc-meter"></div>
+        </div>
+      </div>
+
+      <!-- Result — compare slider + bento actions -->
+      <div id="output-result">
+        <div id="output-result-video-wrapper" class="compare-wrap">
+          <video id="original-player" muted loop playsinline></video>
+          <video id="result-player" controls autoplay loop playsinline></video>
+          <span class="compare-label compare-label-original">Original</span>
+          <span class="compare-label compare-label-clean">Curățat</span>
+          <div id="compare-divider">
+            <div class="compare-handle" id="compare-handle">
+              <i class="fa-solid fa-chevron-left"></i><i class="fa-solid fa-chevron-right"></i>
+            </div>
+          </div>
+          <div class="result-badge"><i class="fa-solid fa-check-circle"></i> Curățat cu succes</div>
+        </div>
+
+        <div class="result-actions-bento">
+          <button id="download-btn" class="ra-card ra-primary">
+            <i class="fa-solid fa-download"></i>
+            <span>Descarcă</span>
+          </button>
+          <button id="compare-toggle" class="ra-card">
+            <i class="fa-solid fa-arrows-left-right"></i>
+            <span>Compară</span>
+          </button>
+          <button id="new-video-btn" class="ra-card">
+            <i class="fa-solid fa-plus"></i>
+            <span>Video nou</span>
+          </button>
+          <button id="copy-link-btn" class="ra-card">
+            <i class="fa-solid fa-link"></i>
+            <span>Copiază link</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+</div><!-- /app -->
+
+<!-- Social -->
+<div id="social-bubble">
+  <a href="https://discord.gg/h8Ah6VKDzm" target="_blank" class="soc-btn soc-discord" title="Suport Discord">
+    <i class="fa-brands fa-discord"></i>
+  </a>
+  <a href="https://t.me/SmartCreator_official" target="_blank" class="soc-btn soc-tg" title="Telegram VIP">
+    <i class="fa-brands fa-telegram"></i>
+    <span class="soc-tg-dot"></span>
+  </a>
+</div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+/* ═══════════════════════════════════════════════════════════
+   AUTH
+═══════════════════════════════════════════════════════════ */
+const loginModal = document.getElementById('login-modal');
+function openLoginModal()  { loginModal.classList.add('show'); }
+function closeLoginModal() { loginModal.classList.remove('show'); }
+
+// Token JWT trăiește în cookie HttpOnly setat de HUB la /api/auth/google.
+// JS nu mai poate citi/scrie cookie-ul → XSS nu poate exfiltra sesiunea.
+// Toate fetch-urile autenticate folosesc credentials:'include' (cookie trimis automat).
+function setToken(_t){ /* no-op — cookie HttpOnly setat de HUB prin Set-Cookie */ }
+function getToken(){
+  // Fallback compat pentru cookie legacy ne-HttpOnly (tranziție lină)
+  const m = document.cookie.match(/(?:^|; )viralio_token=([^;]*)/);
+  return m ? m[1] : null;
+}
+function removeToken(){
+  document.cookie = 'viralio_token=; domain=.viralio.ro; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+}
+
+window.handleCredentialResponse = async function(response) {
+  try {
+    const res  = await fetch('/api/auth/google', {
+      method:'POST',
+      credentials:'include',   // primește Set-Cookie HttpOnly de la HUB (via proxy local)
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ credential: response.credential })
+    });
+    const data = await res.json();
+    if (data.token) { closeLoginModal(); updateUI(data.user); showToast('Autentificat cu succes!', 'accent'); }
+    else showToast('Eroare la autentificare', 'error');
+  } catch { showToast('Eroare conexiune server', 'error'); }
+};
+
+// Flag global pentru a verifica rapid în UI dacă userul e logat
+// (cookie HttpOnly nu e citibil din JS, deci nu mai putem face check pe document.cookie).
+window._authed = false;
+function updateUI(user) {
+  window._authed = true;
+  if (window.ViralioNav) window.ViralioNav.setUser({
+    name: user.name, email: user.email, avatar: user.picture,
+    credits: user.credits, voice_characters: user.voice_characters,
+    plan: user.subscriptionPlan, status: user.subscriptionStatus,
+  });
+}
+async function logout() {
+  try {
+    await fetch(`${(window.HUB_URL || 'https://viralio.ro')}/api/auth/logout`, { method:'POST', credentials:'include' });
+  } catch {}
+  removeToken();
+  if (window.ViralioNav) window.ViralioNav.clearUser();
+  location.reload();
+}
+
+function wireNavButtons() {
+  if (!window.ViralioNav) return;
+  window.ViralioNav.onLogin(() => openLoginModal());
+  window.ViralioNav.onLogout(() => logout());
+}
+
+window.onload = async () => {
+  wireNavButtons();
+  // Nu mai gateuim pe getToken() — cookie HttpOnly nu e citibil din JS.
+  // Cere /api/auth/me direct cu credentials:'include'; serverul răspunde 401 dacă nu e logat.
+  try {
+    const res = await fetch('/api/auth/me', { credentials:'include' });
+    if (res.ok) { const d = await res.json(); updateUI(d.user); }
+  } catch {}
+};
+
+/* ═══════════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════════ */
+let _toastTimer;
+function showToast(msg, type = 'default') {
+  const el = document.getElementById('toast');
+  const icon  = { accent:'✓', error:'✗', warning:'⚠', default:'ℹ' }[type] || 'ℹ';
+  const color = { accent:'var(--green)', error:'var(--red)', warning:'var(--gold)', default:'var(--text-muted)' }[type];
+  el.innerHTML = `<span style="color:${color};margin-right:6px;font-weight:900;">${icon}</span>${msg}`;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   VIEW MANAGEMENT
+═══════════════════════════════════════════════════════════ */
+function setView(v) {
+  document.getElementById('output-empty').style.display   = v === 'empty'   ? '' : 'none';
+  const prev = document.getElementById('output-preview');
+  prev.className = v === 'preview' ? 'show' : '';
+  document.getElementById('output-loading').className    = v === 'loading' ? 'show' : '';
+  document.getElementById('output-result').className     = v === 'result'  ? 'show' : '';
+}
+setView('empty');
+
+/* ═══════════════════════════════════════════════════════════
+   MOBILE TABS
+═══════════════════════════════════════════════════════════ */
+function switchTab(tab) {
+  document.getElementById('tab-controls').style.display = tab === 'controls' ? '' : 'none';
+  document.getElementById('tab-history').style.display  = tab === 'history'  ? '' : 'none';
+  document.getElementById('tab-controls-btn').classList.toggle('active', tab === 'controls');
+  document.getElementById('tab-history-btn').classList.toggle('active', tab === 'history');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MODEL SELECTION
+═══════════════════════════════════════════════════════════ */
+let selectedModel = 'standard';
+const COST_VALUES = { fast:'0.5', standard:'0.75', ai:'1.5' };
+const COST_STYLE  = {
+  fast:     { bg:'rgba(251,146,60,.15)',  border:'rgba(251,146,60,.3)',   color:'#fb923c' },
+  standard: { bg:'var(--accent-dim)',     border:'var(--accent-border)',  color:'var(--accent)' },
+  ai:       { bg:'var(--indigo-dim)',     border:'var(--indigo-border)',  color:'#a5a8ff' },
+};
+
+/* Durată video — declarate devreme, înainte de orice listener */
+const MAX_DURATION_AI   = 60;
+let   currentVideoDuration = 0;
+
+const LOADING_MSGS = {
+  fast:     ['Ștergem textul...','Procesăm cadrele...','Aproape gata...'],
+  standard: ['Analizăm imaginea...','Identificăm zona...','Reconstruim fundalul...','Finalizăm videoul...'],
+  ai:       ['Pornim procesarea AI...','Inteligența artificială lucrează...','Reconstruim în detaliu...','Finalizăm și exportăm...'],
+};
+
+document.querySelectorAll('.model-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.model-card').forEach(c => c.classList.remove('sel-fast','sel-standard','sel-ai'));
+    const model = card.dataset.model;
+    card.classList.add(`sel-${model}`);
+    selectedModel = model;
+
+    const s  = COST_STYLE[model];
+    const cd = document.getElementById('cost-display');
+    cd.style.background = s.bg;
+    cd.style.borderColor = s.border;
+    cd.style.color = s.color;
+    cd.innerHTML = `${COST_VALUES[model]} <i class="fa-solid fa-coins" style="font-size:.6rem;"></i>`;
+
+    checkAiDuration(); // arată/ascunde eroarea de durată când schimbi modelul
+    // Detectarea automată e dezactivată — box-urile se poziționează manual indiferent de model
+    document.getElementById('detect-status').classList.remove('show');
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   MULTI-BOX MANAGEMENT
+═══════════════════════════════════════════════════════════ */
+const MAX_BOXES  = 5;
+const ZONE_NAMES = ['Zonă 1','Zonă 2','Zonă 3','Zonă 4','Zonă 5'];
+let boxes     = [];
+let nextBoxId = 0;
+
+const boxesList       = document.getElementById('boxes-list');
+const boxesOverlay    = document.getElementById('boxes-overlay');
+const addBoxBtn       = document.getElementById('addBoxBtn');
+const previewContainer = document.getElementById('output-preview');
+
+function defaultBoxCfg() {
+  const i = boxes.length;
+  return { id: nextBoxId++, x: 10 + i*5, y: 70 - i*15, w: 80 - i*10, h: 20 };
+}
+
+function addBox() {
+  if (boxes.length >= MAX_BOXES) return;
+  const cfg = defaultBoxCfg();
+  boxes.push(cfg);
+  renderBoxCard(cfg);
+  renderBoxOverlay(cfg);
+  refreshAddBtn();
+  refreshLabels();
+}
+
+function removeBox(id) {
+  if (boxes.length <= 1) return;
+  boxes = boxes.filter(b => b.id !== id);
+  document.getElementById(`box-card-${id}`)?.remove();
+  document.getElementById(`detection-box-${id}`)?.remove();
+  refreshAddBtn(); refreshLabels(); refreshColorClasses();
+}
+
+function refreshAddBtn() {
+  if (boxes.length >= MAX_BOXES) {
+    addBoxBtn.disabled = true;
+    addBoxBtn.innerHTML = `<i class="fa-solid fa-check"></i> MAX ${MAX_BOXES}`;
+  } else {
+    addBoxBtn.disabled = false;
+    addBoxBtn.innerHTML = `<i class="fa-solid fa-plus"></i> ADAUGĂ ZONĂ`;
+  }
+}
+
+function refreshLabels() {
+  boxes.forEach((b, idx) => {
+    const t = document.getElementById(`box-card-${b.id}`)?.querySelector('.bct');
+    if (t) t.textContent = ZONE_NAMES[idx] || `Zonă ${idx+1}`;
+    const l = document.getElementById(`detection-box-${b.id}`)?.querySelector('.box-label');
+    if (l) l.textContent = `Z${idx+1}`;
+  });
+}
+
+function refreshColorClasses() {
+  boxes.forEach((b, idx) => {
+    const card    = document.getElementById(`box-card-${b.id}`);
+    const overlay = document.getElementById(`detection-box-${b.id}`);
+    for (let i = 0; i < MAX_BOXES; i++) {
+      card?.classList.remove(`box-card-${i}`);
+      overlay?.classList.remove(`box-color-${i}`);
+      overlay?.querySelector('.box-label')?.classList.remove(`box-label-${i}`);
+    }
+    card?.classList.add(`box-card-${idx}`);
+    overlay?.classList.add(`box-color-${idx}`);
+    overlay?.querySelector('.box-label')?.classList.add(`box-label-${idx}`);
+  });
+  // Refresh remove btn states
+  boxesList.querySelectorAll('[data-rm]').forEach(btn => {
+    btn.disabled = boxes.length <= 1;
+    btn.style.opacity = boxes.length <= 1 ? '.3' : '1';
+  });
+}
+
+function renderBoxCard(cfg) {
+  const idx  = boxes.findIndex(b => b.id === cfg.id);
+  const card = document.createElement('div');
+  card.id = `box-card-${cfg.id}`;
+  card.className = `box-card box-card-${idx}`;
+  card.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
+      <span class="bct" style="font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);">${ZONE_NAMES[idx]||`Zonă ${idx+1}`}</span>
+      <button data-rm="${cfg.id}" style="width:20px;height:20px;border-radius:5px;border:1px solid var(--border);background:none;color:var(--text-faint);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.58rem;transition:all .15s;" ${boxes.length<=1?'disabled style="opacity:.3;cursor:not-allowed;"':''}>
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;">
+      ${['y','h','x','w'].map(axis => {
+        const lbl   = {y:'Vert.',h:'Înălțime',x:'Oriz.',w:'Lățime'}[axis];
+        const range = {y:[0,95],h:[5,80],x:[0,95],w:[10,100]}[axis];
+        return `<div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:.52rem;font-weight:700;text-transform:uppercase;color:var(--text-faint);">${lbl}</span>
+            <span class="v-${axis}" style="font-size:.55rem;font-family:'JetBrains Mono',monospace;color:var(--text-muted);background:var(--bg-card);border:1px solid var(--border);padding:1px 4px;border-radius:4px;">${cfg[axis]}%</span>
+          </div>
+          <input type="range" data-axis="${axis}" data-bid="${cfg.id}" min="${range[0]}" max="${range[1]}" value="${cfg[axis]}">
+        </div>`;
+      }).join('')}
+    </div>`;
+  boxesList.appendChild(card);
+
+  card.querySelectorAll('input[type=range]').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const axis = e.target.dataset.axis;
+      const box  = boxes.find(b => b.id === parseInt(e.target.dataset.bid));
+      if (!box) return;
+      box[axis] = parseInt(e.target.value);
+      card.querySelector(`.v-${axis}`).textContent = box[axis] + '%';
+      applyBoxStyle(box);
+    });
+  });
+
+  card.querySelector('[data-rm]')?.addEventListener('click', e => {
+    removeBox(parseInt(e.currentTarget.dataset.rm));
+  });
+
+  // Enable remove buttons on all if we now have ≥2
+  if (boxes.length > 1) {
+    boxesList.querySelectorAll('[data-rm]').forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+  }
+}
+
+function renderBoxOverlay(cfg) {
+  const idx = boxes.findIndex(b => b.id === cfg.id);
+  const el  = document.createElement('div');
+  el.id = `detection-box-${cfg.id}`;
+  el.className = `detection-box box-color-${idx}`;
+  el.style.cssText = `top:${cfg.y}%;left:${cfg.x}%;width:${cfg.w}%;height:${cfg.h}%;`;
+  el.innerHTML = `
+    <div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);">
+      <span class="box-label box-label-${idx}">Z${idx+1}</span>
+    </div>
+    <div class="drag-area"><i class="fa-solid fa-arrows-up-down-left-right drag-icon" style="font-size:1.4rem;pointer-events:none;"></i></div>
+    <div class="resizer resizer-tl" data-dir="tl"></div><div class="resizer resizer-tr" data-dir="tr"></div>
+    <div class="resizer resizer-bl" data-dir="bl"></div><div class="resizer resizer-br" data-dir="br"></div>
+    <div class="resizer resizer-t"  data-dir="t"></div><div class="resizer resizer-b"  data-dir="b"></div>
+    <div class="resizer resizer-l"  data-dir="l"></div><div class="resizer resizer-r"  data-dir="r"></div>`;
+  boxesOverlay.appendChild(el);
+  attachDrag(el, cfg.id);
+}
+
+function applyBoxStyle(box) {
+  const el = document.getElementById(`detection-box-${box.id}`);
+  if (!el) return;
+  el.style.top = box.y + '%'; el.style.left  = box.x + '%';
+  el.style.width = box.w + '%'; el.style.height = box.h + '%';
+}
+
+function syncSliders(box) {
+  const card = document.getElementById(`box-card-${box.id}`);
+  if (!card) return;
+  ['x','y','w','h'].forEach(a => {
+    const inp = card.querySelector(`input[data-axis="${a}"]`);
+    const val = card.querySelector(`.v-${a}`);
+    if (inp) inp.value = Math.round(box[a]);
+    if (val) val.textContent = Math.round(box[a]) + '%';
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DRAG & RESIZE
+═══════════════════════════════════════════════════════════ */
+function attachDrag(el, boxId) {
+  let drag=false, resize=false, dir=null;
+  let sx=0,sy=0,st=0,sl=0,sw=0,sh=0;
+
+  const down = (cx,cy,target) => {
+    if (target.classList.contains('resizer')) { resize=true; dir=target.dataset.dir; }
+    else drag=true;
+    sx=cx; sy=cy;
+    st=el.offsetTop; sl=el.offsetLeft; sw=el.offsetWidth; sh=el.offsetHeight;
+  };
+
+  const move = (cx,cy) => {
+    if (!drag && !resize) return;
+    const cH=previewContainer.offsetHeight||1, cW=previewContainer.offsetWidth||1;
+    let t=st, l=sl, w=sw, h=sh;
+    const dx=cx-sx, dy=cy-sy;
+
+    if (drag) {
+      t+=dy; l+=dx;
+      t=Math.max(0,Math.min(cH-h,t)); l=Math.max(0,Math.min(cW-w,l));
+    } else {
+      if (dir.includes('r')) w+=dx;
+      if (dir.includes('l')) { w-=dx; l+=dx; }
+      if (dir.includes('b')) h+=dy;
+      if (dir.includes('t')) { h-=dy; t+=dy; }
+      const ms=20;
+      if (w<ms) { if(dir.includes('l')) l-=ms-w; w=ms; }
+      if (h<ms) { if(dir.includes('t')) t-=ms-h; h=ms; }
+      if (l<0) { w+=l; l=0; } if (t<0) { h+=t; t=0; }
+      if (l+w>cW) w=cW-l; if (t+h>cH) h=cH-t;
+    }
+    const box=boxes.find(b=>b.id===boxId); if(!box) return;
+    box.x=(l/cW)*100; box.y=(t/cH)*100; box.w=(w/cW)*100; box.h=(h/cH)*100;
+    applyBoxStyle(box); syncSliders(box);
+  };
+
+  const up = () => { drag=false; resize=false; dir=null; };
+
+  el.addEventListener('mousedown', e => { down(e.clientX,e.clientY,e.target); e.preventDefault(); e.stopPropagation(); });
+  document.addEventListener('mousemove', e => move(e.clientX,e.clientY));
+  document.addEventListener('mouseup', up);
+
+  el.addEventListener('touchstart', e => {
+    const t=e.touches[0]; down(t.clientX,t.clientY,e.target); e.preventDefault();
+  }, { passive:false });
+  document.addEventListener('touchmove', e => {
+    if (!drag&&!resize) return; const t=e.touches[0]; move(t.clientX,t.clientY);
+  }, { passive:true });
+  document.addEventListener('touchend', up);
+}
+
+addBoxBtn.addEventListener('click', addBox);
+document.getElementById('redetectBtn')?.addEventListener('click', () => { if (currentVideoFile) detectCaptions(); });
+addBox(); // primul box implicit
+
+function showAllBoxes() { boxesOverlay.querySelectorAll('.detection-box').forEach(b => b.style.display=''); }
+function hideAllBoxes() { boxesOverlay.querySelectorAll('.detection-box').forEach(b => b.style.display='none'); }
+
+function clearAllBoxes() {
+  boxes.forEach(b => {
+    document.getElementById(`box-card-${b.id}`)?.remove();
+    document.getElementById(`detection-box-${b.id}`)?.remove();
+  });
+  boxes = [];
+}
+
+/* ═══════════════════════════════════════════════════════════
+   AUTO-DETECT CAPTIONS
+═══════════════════════════════════════════════════════════ */
+async function detectCaptions() {
+  const video = document.getElementById('preview-player');
+  const statusEl = document.getElementById('detect-status');
+  const iconEl   = document.getElementById('detect-icon');
+  const textEl   = document.getElementById('detect-text');
+  // Nu mai gateuim pe token JS — serverul verifică cookie HttpOnly și răspunde 401 dacă nu e logat
+  if (!currentVideoFile || !video.videoWidth) return;
+
+  iconEl.className = 'fa-solid fa-circle-notch fa-spin';
+  iconEl.style.color = 'var(--accent)';
+  textEl.textContent = 'Detectare automată...';
+  statusEl.classList.add('show');
+
+  try {
+    const seekTime = Math.min((video.duration||0)*0.3, 3);
+    if (seekTime > 0) {
+      video.currentTime = seekTime;
+      await new Promise(res => {
+        const h = () => { video.removeEventListener('seeked',h); res(); };
+        video.addEventListener('seeked', h);
+        setTimeout(res, 1500);
+      });
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+    canvas.getContext('2d').drawImage(video,0,0);
+    const blob = await new Promise(r => canvas.toBlob(r,'image/jpeg',.92));
+    const fd = new FormData(); fd.append('frame', blob, 'frame.jpg');
+
+    const res  = await fetch('/api/detect-captions', { method:'POST', credentials:'include', body:fd });
+    const data = await res.json();
+
+    if (data.boxes?.length > 0) {
+      clearAllBoxes();
+      data.boxes.slice(0, MAX_BOXES).forEach(b => {
+        const cfg = { id:nextBoxId++, x:b.x, y:b.y, w:b.w, h:b.h };
+        boxes.push(cfg); renderBoxCard(cfg); renderBoxOverlay(cfg);
+      });
+      if (boxes.length===0) addBox();
+      refreshAddBtn(); refreshLabels(); refreshColorClasses();
+      const n = data.boxes.length;
+      iconEl.className = 'fa-solid fa-check-circle'; iconEl.style.color='var(--green)';
+      textEl.textContent = `${n} zon${n>1?'e':'ă'} detectat${n>1?'e':'ă'}. Ajustează dacă e necesar.`;
+    } else {
+      iconEl.className = 'fa-solid fa-triangle-exclamation'; iconEl.style.color='var(--gold)';
+      textEl.textContent = 'Niciun text detectat. Poziționează manual.';
+      if (boxes.length===0) addBox();
+    }
+  } catch (err) {
+    console.warn('[DETECT] err:', err);
+    iconEl.className = 'fa-solid fa-xmark'; iconEl.style.color='var(--red)';
+    textEl.textContent = 'Eroare la detectare. Poziționează manual.';
+    if (boxes.length===0) addBox();
+  } finally {
+    // Indiferent de rezultat: asigurăm că box-urile sunt vizibile pe video,
+    // ca să poată muta/regla manual. (Fix bug: pe AI după primul video,
+    // box-urile rămâneau ascunse din `hideAllBoxes()` în loadValidFile.)
+    showAllBoxes();
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FILE UPLOAD & PREVIEW
+═══════════════════════════════════════════════════════════ */
+const dropZone  = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const fileInfo  = document.getElementById('fileInfo');
+let currentVideoFile = null;
+
+dropZone.addEventListener('click',     () => fileInput.click());
+dropZone.addEventListener('dragover',  e  => { e.preventDefault(); dropZone.classList.add('active'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('active'));
+dropZone.addEventListener('drop', e  => { e.preventDefault(); dropZone.classList.remove('active'); if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => { if(e.target.files.length) handleFile(e.target.files[0]); });
+
+function checkAiDuration() {
+  if (selectedModel === 'ai' && currentVideoDuration > MAX_DURATION_AI) {
+    const sec = Math.round(currentVideoDuration);
+    document.getElementById('duration-error-text').textContent =
+      `Videoul tău are ${sec} sec. AI Perfect acceptă max ${MAX_DURATION_AI} sec — alege Instant sau Standard.`;
+    document.getElementById('duration-error').style.display = 'flex';
+  } else {
+    document.getElementById('duration-error').style.display = 'none';
+  }
+}
+
+function handleFile(file) {
+  if (!file.type.startsWith('video/')) { showToast('Te rog încarcă un fișier video valid!', 'error'); return; }
+  // Mereu încărcăm fișierul — limita de 60s e doar pentru AI Perfect
+  loadValidFile(file);
+}
+
+function loadValidFile(file) {
+  currentVideoFile = file;
+
+  // Reset complet box-uri — previne bug-ul cu al doilea video
+  clearAllBoxes();
+  addBox();
+  hideAllBoxes(); // ascunse până se încarcă preview-ul
+
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileSize').textContent = (file.size/1024/1024).toFixed(1) + ' MB';
+  dropZone.style.display = 'none';
+  fileInfo.classList.add('show');
+
+  const previewPlayer = document.getElementById('preview-player');
+  previewPlayer.src = URL.createObjectURL(file);
+
+  previewPlayer.onloadedmetadata = function() {
+    currentVideoDuration = this.duration || 0;
+    checkAiDuration();
+
+    const ratio = this.videoWidth / this.videoHeight;
+    [previewContainer, document.getElementById('output-loading'), document.getElementById('output-result-video-wrapper')].forEach(c => {
+      if (!c) return;
+      c.style.aspectRatio = ratio;
+      c.style.maxHeight   = 'calc(100dvh - 140px)';
+      c.style.maxWidth    = '100%';
+      c.style.margin      = '0 auto';
+    });
+    setView('preview');
+    // Box-uri poziționate manual indiferent de model (detectarea automată e dezactivată)
+    // Dublu rAF — garantează că layout-ul cu aspect-ratio e complet înainte de a afișa box-urile
+    requestAnimationFrame(() => { requestAnimationFrame(() => { showAllBoxes(); }); });
+  };
+}
+
+function clearFile() {
+  currentVideoFile = null; fileInput.value = '';
+  ['preview-player','result-player','processing-player'].forEach(id => {
+    const v = document.getElementById(id); v.pause(); v.removeAttribute('src'); v.load();
+  });
+  fileInfo.classList.remove('show');
+  dropZone.style.display = '';
+  setView('empty');
+  currentVideoDuration = 0;
+  clearAllBoxes(); // șterge complet din DOM + array, nu doar ascunde
+  addBox();        // pregătește un box curat pentru următorul video
+  hideAllBoxes();  // îl ascundem până se încarcă noul video
+  document.getElementById('detect-status').classList.remove('show');
+  document.getElementById('duration-error').style.display = 'none';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   HISTORY
+═══════════════════════════════════════════════════════════ */
+let sessionHistory = [];
+let historyOpen    = true;
+
+function addToHistory(entry) {
+  sessionHistory.unshift(entry);
+  if (sessionHistory.length > 10) sessionHistory.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const MODEL_LABEL = { fast:'⚡ Instant', standard:'✨ Standard', ai:'🤖 AI Perfect' };
+  ['desktop','mobile'].forEach(sfx => {
+    const list  = document.getElementById(`hist-list-${sfx}`);
+    const empty = document.getElementById(`hist-empty-${sfx}`);
+    if (!list) return;
+    list.innerHTML = '';
+    if (sessionHistory.length === 0) { if(empty) empty.style.display=''; return; }
+    if (empty) empty.style.display = 'none';
+    sessionHistory.forEach((h, i) => {
+      const el = document.createElement('div');
+      el.className = 'hist-item';
+      el.style.animationDelay = `${i*40}ms`;
+      el.innerHTML = `
+        <div style="width:30px;height:30px;border-radius:8px;background:var(--accent-dim);border:1px solid var(--accent-border);display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--accent);flex-shrink:0;">
+          <i class="fa-solid fa-film"></i>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <p style="font-size:.7rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${h.name}</p>
+          <p style="font-size:.58rem;color:var(--text-muted);margin-top:1px;">${MODEL_LABEL[h.model]||h.model} · ${h.size} · ${h.time}</p>
+        </div>
+        <a href="${h.url}" download="viralio_clean.mp4"
+          style="width:26px;height:26px;border-radius:7px;border:1px solid var(--border);background:var(--bg-card);color:var(--accent);display:flex;align-items:center;justify-content:center;text-decoration:none;flex-shrink:0;transition:all .2s;font-size:.62rem;"
+          title="Descarcă">
+          <i class="fa-solid fa-download"></i>
+        </a>`;
+      list.appendChild(el);
+    });
+  });
+}
+
+function toggleHistory() {
+  historyOpen = !historyOpen;
+  const list    = document.getElementById('hist-list-desktop');
+  const empty   = document.getElementById('hist-empty-desktop');
+  const chevron = document.getElementById('hist-chevron');
+  if (list)    list.style.display    = historyOpen ? '' : 'none';
+  if (empty)   empty.style.display   = historyOpen && sessionHistory.length===0 ? '' : 'none';
+  if (chevron) chevron.style.transform = historyOpen ? '' : 'rotate(-90deg)';
+}
+
+renderHistory();
+
+/* ═══════════════════════════════════════════════════════════
+   PROCESS
+═══════════════════════════════════════════════════════════ */
+document.getElementById('processBtn').addEventListener('click', async () => {
+  // Gate pe flag setat de updateUI (cookie HttpOnly = nu putem citi din JS).
+  // Fallback pe cookie legacy ne-HttpOnly în caz că tranziția nu s-a făcut încă.
+  if (!window._authed && !getToken()) { openLoginModal(); return; }
+  if (!currentVideoFile) { showToast('Încarcă un video mai întâi!', 'warning'); return; }
+  if (selectedModel === 'ai' && currentVideoDuration > MAX_DURATION_AI) {
+    checkAiDuration(); // asigurăm că eroarea e vizibilă
+    showToast(`AI Perfect: max ${MAX_DURATION_AI} sec. Alege Instant sau Standard.`, 'error');
+    return;
+  }
+
+  const btn = document.getElementById('processBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> PROCESĂM...';
+
+  document.getElementById('preview-player').pause();
+  setView('loading');
+
+  const pp = document.getElementById('processing-player');
+  pp.src = URL.createObjectURL(currentVideoFile);
+  pp.play();
+
+  const msgs = LOADING_MSGS[selectedModel];
+  let step = 0;
+  document.getElementById('loading-text').textContent = msgs[0];
+  const textInterval = setInterval(() => {
+    step++;
+    if (step < msgs.length) document.getElementById('loading-text').textContent = msgs[step];
+  }, 2500);
+
+  const t0 = performance.now();
+  const fd = new FormData();
+  fd.append('video', currentVideoFile);
+  const boxesPayload = boxes.map(b => ({ x:Math.round(b.x), y:Math.round(b.y), w:Math.round(b.w), h:Math.round(b.h) }));
+  fd.append('boxes', JSON.stringify(boxesPayload));
+  if (boxes[0]) {
+    fd.append('boxX', Math.round(boxes[0].x)); fd.append('boxY', Math.round(boxes[0].y));
+    fd.append('boxW', Math.round(boxes[0].w)); fd.append('boxH', Math.round(boxes[0].h));
+  }
+  fd.append('model', selectedModel);
+
+  try {
+    const res = await fetch('/api/remove-caption', { method:'POST', credentials:'include', body:fd });
+    const elapsed = ((performance.now()-t0)/1000).toFixed(1);
+    const ct = res.headers.get('content-type') || '';
+    let data;
+    if (ct.includes('application/json')) {
+      data = await res.json();
+    } else {
+      const txt = await res.text();
+      const msg = res.status===502||res.status===504 ? 'Serverul nu a răspuns la timp. Încearcă cu un video mai scurt.'
+                : res.status===413 ? 'Videoul este prea mare (max 200MB).'
+                : `Eroare server (${res.status}). Încearcă din nou.`;
+      data = { error: msg };
+      console.warn('Non-JSON response:', txt.slice(0,200));
+    }
+
+    clearInterval(textInterval); pp.pause();
+
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+    if (window.ViralioNav && data.creditsLeft !== undefined) window.ViralioNav.setCredits(data.creditsLeft);
+
+    document.getElementById('result-player').src = data.downloadUrl;
+    document.getElementById('download-btn').onclick = () => {
+      const a = document.createElement('a'); a.href = data.downloadUrl; a.download = 'viralio_cleaned_video.mp4'; a.click();
+    };
+    setView('result');
+
+    addToHistory({
+      name:  currentVideoFile.name,
+      url:   data.downloadUrl,
+      model: selectedModel,
+      size:  (currentVideoFile.size/1024/1024).toFixed(1) + ' MB',
+      time:  new Date().toLocaleTimeString('ro-RO', { hour:'2-digit', minute:'2-digit' }),
+    });
+
+    // Setează slider-ul de comparație + celebrare
+    setupCompare(currentVideoFile);
+    celebrateResult();
+
+    showToast(`✓ Procesat în ${elapsed}s`, 'accent');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-eraser"></i> CURĂȚĂ TEXTUL';
+
+  } catch (err) {
+    clearInterval(textInterval); pp.pause();
+    setView(currentVideoFile ? 'preview' : 'empty');
+    showToast(err.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-eraser"></i> CURĂȚĂ TEXTUL';
+    console.error('[PROCESS]', err);
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════
+   BEFORE / AFTER COMPARE SLIDER
+═══════════════════════════════════════════════════════════ */
+let compareOn = false;
+let _compareSyncHandle = null;
+let _pendingOriginalFile = null;
+let _originalLoaded = false;
+let _compareSyncWired = false;
+
+function setupCompare(originalFile) {
+  const wrap = document.getElementById('output-result-video-wrapper');
+  // Doar memorăm fișierul — încărcăm originalul lazy la primul click pe "Compară".
+  _pendingOriginalFile = originalFile;
+  _originalLoaded = false;
+  setCompareMode(false);
+  wrap.style.setProperty('--cmp', '50%');
+}
+
+function loadOriginalIfNeeded() {
+  if (_originalLoaded || !_pendingOriginalFile) return;
+  const orig   = document.getElementById('original-player');
+  const result = document.getElementById('result-player');
+  try { if (orig.src) URL.revokeObjectURL(orig.src); } catch(_){}
+  orig.src = URL.createObjectURL(_pendingOriginalFile);
+  orig.muted = true;
+  orig.playsInline = true;
+  orig.loop = true;
+
+  if (!_compareSyncWired) {
+    result.addEventListener('play',    () => { if (compareOn) { orig.currentTime = result.currentTime; orig.play().catch(()=>{}); } });
+    result.addEventListener('pause',   () => orig.pause());
+    result.addEventListener('seeking', () => { if (compareOn) orig.currentTime = result.currentTime; });
+    const syncLoop = () => {
+      if (compareOn && !result.paused && Math.abs(result.currentTime - orig.currentTime) > 0.12) {
+        orig.currentTime = result.currentTime;
+      }
+      _compareSyncHandle = requestAnimationFrame(syncLoop);
+    };
+    _compareSyncHandle = requestAnimationFrame(syncLoop);
+    _compareSyncWired = true;
+  }
+  _originalLoaded = true;
+}
+
+function setCompareMode(on) {
+  compareOn = on;
+  const wrap   = document.getElementById('output-result-video-wrapper');
+  const result = document.getElementById('result-player');
+  const orig   = document.getElementById('original-player');
+  const toggle = document.getElementById('compare-toggle');
+
+  if (on) loadOriginalIfNeeded();
+
+  wrap.classList.toggle('cmp-on', on);
+  result.classList.toggle('cmp-active', on);
+  if (toggle) toggle.classList.toggle('ra-active', on);
+
+  if (on) {
+    // Sincronizăm cadrul, dar pornim originalul DOAR dacă rezultatul rulează deja.
+    // Altfel browser-ul lasă originalul (muted) să meargă, dar blochează rezultatul → desync.
+    try {
+      orig.currentTime = result.currentTime;
+      if (!result.paused) orig.play().catch(()=>{});
+      else orig.pause();
+    } catch(_){}
+  } else {
+    try { orig.pause(); } catch(_){}
+  }
+}
+
+/* Drag handle pentru divider — atașat DOAR pe handle/divider, nu pe wrap,
+   ca să nu blocheze click-urile pe controalele video (play/pause/seek). */
+(function initCompareDrag(){
+  const wrap   = document.getElementById('output-result-video-wrapper');
+  const handle = document.getElementById('compare-handle');
+  if (!wrap || !handle) return;
+  let dragging = false;
+
+  const setPos = (clientX) => {
+    const r = wrap.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(100, ((clientX - r.left) / r.width) * 100));
+    wrap.style.setProperty('--cmp', pct + '%');
+  };
+
+  const start = (e) => {
+    if (!compareOn) return;
+    dragging = true;
+    setPos(e.touches ? e.touches[0].clientX : e.clientX);
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  const move = (e) => {
+    if (!dragging) return;
+    setPos(e.touches ? e.touches[0].clientX : e.clientX);
+  };
+  const stop = () => { dragging = false; };
+
+  handle.addEventListener('mousedown',  start);
+  handle.addEventListener('touchstart', start, { passive:false });
+  window.addEventListener('mousemove', move);
+  window.addEventListener('touchmove', move, { passive:true });
+  window.addEventListener('mouseup', stop);
+  window.addEventListener('touchend', stop);
+})();
+
+document.getElementById('compare-toggle')?.addEventListener('click', () => {
+  setCompareMode(!compareOn);
+});
+
+document.getElementById('new-video-btn')?.addEventListener('click', () => {
+  setCompareMode(false);
+  clearFile();
+});
+
+document.getElementById('copy-link-btn')?.addEventListener('click', async () => {
+  const rp = document.getElementById('result-player');
+  const src = rp?.src;
+  if (!src) return;
+  const full = src.startsWith('http') ? src : (location.origin + src);
+  try {
+    await navigator.clipboard.writeText(full);
+    showToast('Link copiat în clipboard', 'accent');
+  } catch {
+    showToast('Nu pot accesa clipboard-ul', 'error');
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════
+   CONFETTI — particle burst pe success
+═══════════════════════════════════════════════════════════ */
+function celebrateResult() {
+  const canvas = document.getElementById('confetti-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = innerWidth  * dpr;
+  canvas.height = innerHeight * dpr;
+  canvas.style.width  = innerWidth  + 'px';
+  canvas.style.height = innerHeight + 'px';
+  ctx.scale(dpr, dpr);
+
+  const colors = ['#65d69e','#6366f1','#f5c842','#34d399','#a5a8ff','#ffffff'];
+  const N = 110;
+  const cx = innerWidth * 0.5;
+  const cy = innerHeight * 0.42;
+  const parts = [];
+  for (let i = 0; i < N; i++) {
+    const angle = (Math.PI * 2 * i) / N + Math.random()*0.4;
+    const speed = 4 + Math.random() * 7;
+    parts.push({
+      x: cx, y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 2,
+      r: 3 + Math.random() * 4,
+      c: colors[(Math.random()*colors.length)|0],
+      life: 0,
+      rot: Math.random() * Math.PI,
+      vr: (Math.random()-0.5) * 0.3,
+    });
+  }
+
+  const t0 = performance.now();
+  function frame(t) {
+    const dt = (t - t0);
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    let alive = 0;
+    for (const p of parts) {
+      p.vy += 0.18;           // gravity
+      p.vx *= 0.992;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.rot += p.vr;
+      p.life++;
+      const a = Math.max(0, 1 - dt / 1700);
+      if (a <= 0) continue;
+      alive++;
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.c;
+      ctx.fillRect(-p.r/2, -p.r/2, p.r, p.r * 1.6);
+      ctx.restore();
+    }
+    if (alive > 0 && dt < 1800) {
+      requestAnimationFrame(frame);
+    } else {
+      ctx.clearRect(0, 0, innerWidth, innerHeight);
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DROPZONE — radial glow track la mouse
+═══════════════════════════════════════════════════════════ */
+(function initDropGlow(){
+  const dz = document.getElementById('dropZone');
+  if (!dz) return;
+  dz.addEventListener('mousemove', e => {
+    const r = dz.getBoundingClientRect();
+    dz.style.setProperty('--mx', ((e.clientX - r.left) / r.width  * 100) + '%');
+    dz.style.setProperty('--my', ((e.clientY - r.top)  / r.height * 100) + '%');
+  });
+})();
+
+</script>
+</body>
+</html>
