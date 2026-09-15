@@ -897,15 +897,8 @@ html.light #toast { background:rgba(0,0,0,.88); color:#fff; }
       <i class="fas fa-fingerprint"></i>
     </div>
     <h2 style="font-family:'Fraunces',serif;font-weight:900;font-size:1.4rem;margin-bottom:7px;">Intră în cont</h2>
-    <p style="color:var(--text-muted);font-size:.78rem;margin-bottom:22px;line-height:1.5;">Conectează-te pentru a procesa videoclipuri.</p>
-    <div style="display:flex;justify-content:center;background:var(--bg-card);border:1px solid var(--border);padding:14px;border-radius:14px;">
-      <div id="g_id_onload"
-        data-client_id="743541351685-br4h5r61n3ai28bbhm9blt34944rju8p.apps.googleusercontent.com"
-        data-context="signin" data-ux_mode="popup"
-        data-callback="handleCredentialResponse" data-auto_prompt="false"></div>
-      <div class="g_id_signin" data-type="standard" data-shape="rectangular"
-        data-theme="filled_black" data-text="signin_with" data-size="large"></div>
-    </div>
+    <p style="color:var(--text-muted);font-size:.78rem;margin-bottom:22px;line-height:1.5;">Conectează-te ca să procesezi videoclipuri. Te conectezi pe viralio.ro și revii automat aici.</p>
+    <button type="button" onclick="location.href='https://viralio.ro/?login=1&amp;next='+encodeURIComponent(location.href)" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px 18px;border:0;border-radius:14px;background:#65d69e;color:#07120d;font-family:inherit;font-size:.95rem;font-weight:700;cursor:pointer"><i class="fas fa-sign-in-alt"></i> Conectează-te pe Viralio</button>
   </div>
 </div>
 
@@ -1160,7 +1153,6 @@ html.light #toast { background:rgba(0,0,0,.88); color:#fff; }
   </a>
 </div>
 
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 /* ═══════════════════════════════════════════════════════════
    AUTH
